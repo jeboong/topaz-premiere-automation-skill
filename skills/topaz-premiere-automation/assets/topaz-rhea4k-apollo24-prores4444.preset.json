@@ -7,6 +7,7 @@
     "fps": 24,
     "fpsMode": "cfr",
     "container": "mov",
+    "containerBrand": "qt  ",
     "videoCodec": "prores_ks",
     "proresProfile": "4444",
     "pixelFormat": "yuv444p10le",
@@ -22,6 +23,8 @@
   },
   "filterChainForNon24FpsSources": "tvai_fi=model=apo-8:slowmo=1:rdt=-0.000001:device=0:vram=1:instances=1,tvai_up=model=rhea-1:scale=0:w=3840:h=2160:preblur=0:noise=0:details=0:halo=0:blur=0:compression=0:estimate=8:device=0:vram=1:instances=1,scale=w=3840:h=2160:flags=lanczos:threads=0,fps=fps=24",
   "filterChainForExact24FpsSources": "tvai_up=model=rhea-1:scale=0:w=3840:h=2160:preblur=0:noise=0:details=0:halo=0:blur=0:compression=0:estimate=8:device=0:vram=1:instances=1,scale=w=3840:h=2160:flags=lanczos:threads=0,setpts=N/(24*TB)",
-  "encoderOptionsForNon24FpsSources": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444 -r:v 24 -fps_mode:v cfr",
-  "encoderOptionsForExact24FpsSources": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444 -fps_mode:v passthrough"
+  "movMuxerOptions": "-f mov -brand \"qt  \" -movflags use_metadata_tags+write_colr",
+  "forbiddenFinalMovFlags": "frag_keyframe empty_moov delay_moov",
+  "encoderOptionsForNon24FpsSources": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444 -r:v 24 -fps_mode:v cfr -f mov -brand \"qt  \" -movflags use_metadata_tags+write_colr",
+  "encoderOptionsForExact24FpsSources": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444 -fps_mode:v passthrough -f mov -brand \"qt  \" -movflags use_metadata_tags+write_colr"
 }

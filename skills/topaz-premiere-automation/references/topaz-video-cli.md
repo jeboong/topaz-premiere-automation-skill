@@ -43,7 +43,7 @@ Use:
 
 - 3840x2160
 - exact CFR 24fps
-- MOV
+- Premiere-safe QuickTime MOV (`major_brand=qt  `)
 - ProRes 4444 flags
 - audio copy
 - duplicate-frame replacement off
@@ -66,6 +66,26 @@ This is a real ProRes 4444 MOV signal. It does not restore chroma or alpha missi
 
 If the Topaz UI no longer shows ProRes 4444, use `scripts/Install-ProRes4444Encoder.ps1` or the asset `assets/prores-4444-encoder-entry.json`. CLI automation does not require the UI encoder list because the script passes these flags directly.
 
+## Premiere-Safe MOV Container
+
+Use normal QuickTime MOV muxing for final Premiere media:
+
+```text
+-f mov -brand "qt  " -movflags use_metadata_tags+write_colr
+```
+
+Do not use fragmented/streaming MOV flags for final relink media:
+
+```text
+frag_keyframe empty_moov delay_moov
+```
+
+Those flags can create a file that ffmpeg decodes but Premiere imports as audio-only or treats as a media mismatch. If a Topaz output already exists and Premiere sees only audio, losslessly remux it:
+
+```powershell
+.\scripts\Repair-PremiereMovContainer.ps1 -Path "C:\path\clips" -Require24Fps
+```
+
 ## FPS Normalization
 
 The final filter chain should include:
@@ -80,6 +100,6 @@ Also use output CFR options:
 -r:v 24 -fps_mode:v cfr
 ```
 
-After output, check `avg_frame_rate` or `r_frame_rate` with `ffprobe`. If neither reports 24, rerun or normalize before relinking.
+After output, check both `avg_frame_rate` and `r_frame_rate` with `ffprobe`. Both must report 24fps for company handoff media. Also check `format.tags.major_brand`; it must be `qt  `, not `isom` or `iso4`, before relinking into Premiere.
 
 Topaz Video 1.5.0 may print `Unable to parse "fps" option value "0"` from `tvai_fi` even when no `fps` option is supplied to that filter. Treat it as noise only if the process exits successfully and `ffprobe` verifies exact 24fps.

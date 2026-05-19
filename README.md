@@ -51,10 +51,19 @@ Run the full batch after the smoke test succeeds:
   -Force
 ```
 
+Repair existing Topaz MOV files if Premiere imports them as audio-only:
+
+```powershell
+.\skills\topaz-premiere-automation\scripts\Repair-PremiereMovContainer.ps1 `
+  -Path "C:\path\clips" `
+  -Require24Fps
+```
+
 ## Notes
 
 - This skill targets **Topaz Video**, not **Topaz Video AI**.
-- Output is forced to 3840x2160, CFR 24fps, MOV ProRes 4444, audio copy.
+- Output is forced to 3840x2160, CFR 24fps, Premiere-safe QuickTime MOV (`major_brand=qt  `), ProRes 4444, audio copy.
 - Sources that are already exact 24fps skip Apollo frame interpolation and use Rhea only by default.
 - Duplicate-frame replacement is off.
+- Final Premiere media must not use fragmented MOV flags like `frag_keyframe`, `empty_moov`, or `delay_moov`; those can decode in ffmpeg but import into Premiere as audio-only.
 - The scripts refuse `X:\` paths by default.

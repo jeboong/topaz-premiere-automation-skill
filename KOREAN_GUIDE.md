@@ -16,13 +16,13 @@
 
 5. Topaz Video 프로그램 화면을 직접 열지 않고, CLI로 일괄 업스케일을 돌릴 수 있다.
 
-6. 회사 업스케일 프리셋을 기준으로 4K, 24fps, MOV, ProRes 4444, Rhea 업스케일, audio copy를 적용할 수 있다.
+6. 회사 업스케일 프리셋을 기준으로 4K, 24fps, Premiere에서 잘 읽히는 QuickTime MOV, ProRes 4444, Rhea 업스케일, audio copy를 적용할 수 있다.
 
 7. 원본이 이미 정확한 24fps면 Apollo frame interpolation을 굳이 돌리지 않는다. 원본이 23.976, 30, 24.12처럼 24fps가 아니면 최종 결과를 24fps로 맞춘다.
 
 8. Topaz가 파일명 뒤에 모델 이름 같은 이상한 꼬리를 붙였을 때, 회사 규칙에 맞는 파일명으로 다시 정리할 수 있다.
 
-9. 업스케일된 파일이 제대로 3840x2160, 24fps, ProRes 4444인지 검사할 수 있다.
+9. 업스케일된 파일이 제대로 3840x2160, 24fps, ProRes 4444이고 MOV 브랜드가 `qt  `인지 검사할 수 있다.
 
 10. 업스케일된 파일로 Premiere 프로젝트를 다시 연결할 수 있다.
 
@@ -66,7 +66,9 @@ Codex가 프로젝트 파일 안의 옛 경로를 새 경로로 바꿔서 다시
 
 여러 클립을 Topaz Video에서 하나씩 열고 설정하고 렌더하는 건 귀찮다.
 
-Codex가 CLI로 Topaz를 불러서 폴더 안의 영상들을 한꺼번에 4K ProRes 4444 MOV로 만들 수 있다.
+Codex가 CLI로 Topaz를 불러서 폴더 안의 영상들을 한꺼번에 4K ProRes 4444 QuickTime MOV로 만들 수 있다.
+
+만약 Topaz 결과물이 Premiere에서 오디오만 보이면, 영상이 완전히 망가졌다기보다 MOV 컨테이너가 Premiere와 안 맞는 경우가 있다. 이 repo의 복구 스크립트는 재인코딩 없이 MOV 껍데기만 다시 써서 `qt  ` QuickTime MOV로 고칠 수 있다.
 
 ### 시나리오 4: 업스케일된 파일로 Premiere 프로젝트를 갈아끼울 때
 

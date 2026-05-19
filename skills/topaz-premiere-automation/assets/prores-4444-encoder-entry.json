@@ -3,7 +3,7 @@
   "encoder": "ProRes",
   "profile": "4444",
   "allowsAlpha": 1,
-  "ffmpegOpts": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444",
+  "ffmpegOpts": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444 -f mov -brand \"qt  \" -movflags use_metadata_tags+write_colr",
   "ext": [
     "mov"
   ],

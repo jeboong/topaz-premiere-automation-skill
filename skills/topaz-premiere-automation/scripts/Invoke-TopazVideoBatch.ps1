@@ -80,6 +80,15 @@ function Get-VideoStreamProbe {
   return $streams[0]
 }
 
+function Get-FormatTagsProbe {
+  param([string]$FfprobePath, [string]$PathValue)
+  $probeJson = & $FfprobePath -v error -show_entries format_tags=major_brand,compatible_brands -of json $PathValue
+  if ($LASTEXITCODE -ne 0) { throw "ffprobe format probe failed: $PathValue" }
+  $format = ($probeJson | ConvertFrom-Json).format
+  if ($null -eq $format -or $null -eq $format.tags) { throw "No format tags found: $PathValue" }
+  return $format.tags
+}
+
 function Invoke-TopazProcessRedacted {
   param([string]$ExePath, [string[]]$ArgsList)
   $oldErrorActionPreference = $ErrorActionPreference
@@ -195,7 +204,9 @@ foreach ($item in $items) {
   }
 
   $args += @(
-    "-movflags", "frag_keyframe+empty_moov+delay_moov+use_metadata_tags+write_colr",
+    "-f", "mov",
+    "-brand", "qt  ",
+    "-movflags", "use_metadata_tags+write_colr",
     "-bf", "0",
     "-metadata", "videoai=Processed using $modelsUsed. Changed resolution to ${Width}x${Height}"
   )
@@ -215,21 +226,26 @@ foreach ($item in $items) {
     if ($exitCode -ne 0) { throw "Topaz ffmpeg failed for item $index with exit code $exitCode." }
 
     $probe = Get-VideoStreamProbe $ffprobe $output
+    $formatTags = Get-FormatTagsProbe $ffprobe $output
     $avg = Convert-RateToDouble ([string]$probe.avg_frame_rate)
     $real = Convert-RateToDouble ([string]$probe.r_frame_rate)
-    $rateOk = (($avg -ne $null) -and ([math]::Abs($avg - 24.0) -lt 0.001)) -or (($real -ne $null) -and ([math]::Abs($real - 24.0) -lt 0.001))
+    $avgOk = ($avg -ne $null) -and ([math]::Abs($avg - 24.0) -lt 0.001)
+    $realOk = ($real -ne $null) -and ([math]::Abs($real - 24.0) -lt 0.001)
 
     if ([int]$probe.width -ne $Width -or [int]$probe.height -ne $Height) {
       throw "Output resolution check failed: $output reports $($probe.width)x$($probe.height), expected ${Width}x${Height}."
     }
-    if (-not $rateOk) {
-      throw "Output fps check failed: $output avg=$($probe.avg_frame_rate) r=$($probe.r_frame_rate), expected 24fps."
+    if (-not $avgOk -or -not $realOk) {
+      throw "Output fps check failed: $output avg=$($probe.avg_frame_rate) r=$($probe.r_frame_rate), expected both avg and real rates to report 24fps."
     }
     if ([string]$probe.codec_tag_string -ne "ap4h") {
       throw "Output codec tag check failed: $output reports $($probe.codec_tag_string), expected ap4h."
     }
+    if ([string]$formatTags.major_brand -ne "qt  ") {
+      throw "Output MOV brand check failed: $output reports major_brand='$($formatTags.major_brand)', expected 'qt  ' for Premiere-safe QuickTime MOV."
+    }
 
-    Write-Host "Verified: ${Width}x${Height}, 24fps, ProRes 4444 tag ap4h"
+    Write-Host "Verified: ${Width}x${Height}, 24fps avg/r, ProRes 4444 tag ap4h, QuickTime MOV brand qt"
   }
 }
 

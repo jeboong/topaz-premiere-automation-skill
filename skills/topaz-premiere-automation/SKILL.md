@@ -11,8 +11,8 @@ description: Automate company AI clip workflows that combine Adobe Premiere Pro 
 - Never read from or write to `X:\` unless the user explicitly reverses that rule in the same task.
 - Work on a copied `.prproj` or create a timestamped backup before editing project files or moving media.
 - Treat text layers, captions, graphics, icons, adjustment items, and still images as non-video unless the user explicitly asks to process them.
-- Output company upscales as `3840x2160`, exact `24fps`, `.mov`, ProRes 4444 flags, Rhea upscale, audio copy, duplicate-frame replacement off. Use Apollo frame interpolation only when the source is not already exact 24fps, unless the user explicitly requests FI anyway.
-- Verify every output with `ffprobe`; if a file reports `23.976`, `24.12`, `30`, or anything other than 24fps, normalize/re-render it to exact CFR 24 before relinking. If the source is already exact 24fps, do not add an `fps` filter or `-r 24`, because that can add a duplicate frame on odd frame-count clips; use `setpts=N/(24*TB)` to keep frame count while writing clean 24fps timestamps.
+- Output company upscales as `3840x2160`, exact `24fps`, Premiere-safe QuickTime `.mov` (`major_brand=qt  `), ProRes 4444 flags, Rhea upscale, audio copy, duplicate-frame replacement off. Use Apollo frame interpolation only when the source is not already exact 24fps, unless the user explicitly requests FI anyway.
+- Verify every output with `ffprobe`; both `avg_frame_rate` and `r_frame_rate` must report 24fps, and the MOV format tag must report `major_brand=qt  `. If a file reports `23.976`, `24.12`, `30`, `r_frame_rate=12288/1`, `major_brand=isom/iso4`, or anything nonconforming, normalize/remux before relinking. If the source is already exact 24fps, do not add an `fps` filter or `-r 24`, because that can add a duplicate frame on odd frame-count clips; use `setpts=N/(24*TB)` to keep frame count while writing clean 24fps timestamps.
 
 ## Quick Start
 
@@ -42,8 +42,11 @@ The script sets:
 - `tvai_up=model=rhea-1:w=3840:h=2160`
 - final `fps=fps=24`
 - ProRes 4444 MOV flags: `prores_ks`, `-profile:v 4`, `-tag:v ap4h`, `yuv444p10le`
+- Premiere-safe MOV muxing: `-f mov`, `-brand "qt  "`, `-movflags use_metadata_tags+write_colr`
 
 By default, `Invoke-TopazVideoBatch.ps1` probes each source. If it is already exact 24fps, it skips `tvai_fi` and runs Rhea only. For a smoke test, pass `-FrameLimit 2` on one short source before launching a full batch.
+
+Do not use fragmented MOV flags such as `frag_keyframe`, `empty_moov`, or `delay_moov` for final Premiere relink media. They can produce files that decode in ffmpeg but import into Premiere as audio-only or with missing video.
 
 ## Manifest Format
 
@@ -84,6 +87,7 @@ For `.prproj` work:
 - `scripts/Test-TopazVideoCli.ps1`: workstation readiness check.
 - `scripts/New-TopazBatchManifest.ps1`: create ordered company-named manifests from a folder.
 - `scripts/Invoke-TopazVideoBatch.ps1`: run Topaz Video CLI batch upscales and verify 4K/24fps.
+- `scripts/Repair-PremiereMovContainer.ps1`: losslessly remux existing Topaz `.mov` outputs to Premiere-safe QuickTime MOV (`major_brand=qt  `).
 - `scripts/Update-PremiereLinksFromManifest.ps1`: back up a `.prproj` and relink source paths to manifest outputs.
 - `scripts/Update-FcpXmlFromManifest.ps1`: relink a Premiere/FCP XML handoff to manifest outputs and set sequence width/height.
 - `scripts/Install-ProRes4444Encoder.ps1`: optional UI encoder patch for Topaz's `video-encoders.json`.

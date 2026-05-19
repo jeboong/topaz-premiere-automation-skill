@@ -28,21 +28,41 @@ if (-not (Test-Path -LiteralPath $EntryPath)) { throw "Entry JSON not found: $En
 $encoders = @(Get-Content -LiteralPath $encoderPath -Raw | ConvertFrom-Json)
 $entry = Get-Content -LiteralPath $EntryPath -Raw | ConvertFrom-Json
 
-if ($encoders | Where-Object { $_.id -eq $entry.id }) {
-  Write-Host "Encoder already present: $($entry.id)"
-  return
-}
+$entryJson = $entry | ConvertTo-Json -Depth 20 -Compress
+$hasExisting = @(($encoders | Where-Object { $_.id -eq $entry.id })).Count -gt 0
 
 $updated = New-Object System.Collections.Generic.List[object]
 $inserted = $false
+$changed = $false
 foreach ($encoder in $encoders) {
+  if ($encoder.id -eq $entry.id) {
+    $existingJson = $encoder | ConvertTo-Json -Depth 20 -Compress
+    if ($existingJson -ne $entryJson) {
+      $updated.Add($entry)
+      $changed = $true
+    } else {
+      $updated.Add($encoder)
+    }
+    $inserted = $true
+    continue
+  }
+
   $updated.Add($encoder)
-  if (-not $inserted -and $encoder.id -eq "prores-422-hq-win") {
+  if (-not $hasExisting -and -not $inserted -and $encoder.id -eq "prores-422-hq-win") {
     $updated.Add($entry)
     $inserted = $true
+    $changed = $true
   }
 }
-if (-not $inserted) { $updated.Add($entry) }
+if (-not $inserted) {
+  $updated.Add($entry)
+  $changed = $true
+}
+
+if (-not $changed) {
+  Write-Host "Encoder already up to date: $($entry.id)"
+  return
+}
 
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $backupPath = Join-Path $ModelDir "video-encoders.backup_before_prores4444_$timestamp.json"
