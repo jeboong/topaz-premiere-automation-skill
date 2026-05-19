@@ -47,8 +47,12 @@ Use:
 - ProRes 4444 flags
 - audio copy
 - duplicate-frame replacement off
+- Rhea upscale always
+- Apollo frame interpolation only when source fps is not already exact 24fps, unless the user requests otherwise
 
 `duplicate frames` maps to the `tvai_fi` `rdt` threshold. Use `rdt=-0.000001` or another non-positive value to keep it off. Higher values ask Topaz to detect repeated/held frames and synthesize replacements, which can alter cadence and produce awkward reported rates such as `24.12`.
+
+Before building the filter chain, probe the source with `ffprobe`. If `avg_frame_rate` is exact `24/1`, skip `tvai_fi`; it wastes time and can slightly alter cadence for no benefit. If the source reports `23.976`, `24.12`, `30`, or any other non-24 rate, produce a final CFR 24 output and verify it before relinking.
 
 ## ProRes 4444
 

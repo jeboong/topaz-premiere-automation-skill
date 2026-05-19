@@ -55,5 +55,6 @@ Run the full batch after the smoke test succeeds:
 
 - This skill targets **Topaz Video**, not **Topaz Video AI**.
 - Output is forced to 3840x2160, CFR 24fps, MOV ProRes 4444, audio copy.
+- Sources that are already exact 24fps skip Apollo frame interpolation and use Rhea only by default.
 - Duplicate-frame replacement is off.
 - The scripts refuse `X:\` paths by default.

@@ -11,7 +11,7 @@ description: Automate company AI clip workflows that combine Adobe Premiere Pro 
 - Never read from or write to `X:\` unless the user explicitly reverses that rule in the same task.
 - Work on a copied `.prproj` or create a timestamped backup before editing project files or moving media.
 - Treat text layers, captions, graphics, icons, adjustment items, and still images as non-video unless the user explicitly asks to process them.
-- Output company upscales as `3840x2160`, exact `24fps`, `.mov`, ProRes 4444 flags, Rhea upscale, Apollo frame interpolation, audio copy, duplicate-frame replacement off.
+- Output company upscales as `3840x2160`, exact `24fps`, `.mov`, ProRes 4444 flags, Rhea upscale, audio copy, duplicate-frame replacement off. Use Apollo frame interpolation only when the source is not already exact 24fps, unless the user explicitly requests FI anyway.
 - Verify every output with `ffprobe`; if a file reports `23.976`, `24.12`, `30`, or anything other than 24fps, normalize/re-render it to exact CFR 24 before relinking.
 
 ## Quick Start
@@ -43,7 +43,7 @@ The script sets:
 - final `fps=fps=24`
 - ProRes 4444 MOV flags: `prores_ks`, `-profile:v 4`, `-tag:v ap4h`, `yuv444p10le`
 
-For a smoke test, pass `-FrameLimit 2` on one short source before launching a full batch.
+By default, `Invoke-TopazVideoBatch.ps1` probes each source. If it is already exact 24fps, it skips `tvai_fi` and runs Rhea only. For a smoke test, pass `-FrameLimit 2` on one short source before launching a full batch.
 
 ## Manifest Format
 
@@ -61,6 +61,11 @@ Use UTF-8 JSON:
 ```
 
 Optional fields are `trimStart` and `duration`, but for frame-exact timeline cuts prefer materializing exact-length source clips first, then upscaling those already-trimmed files.
+
+Optional FI controls:
+
+- `frameInterpolation: true`: force Apollo for that item.
+- `frameInterpolation: false` or `noFrameInterpolation: true`: skip Apollo for that item.
 
 ## Premiere Workflow
 

@@ -12,9 +12,12 @@ param(
   [int]$Vram = 1,
   [int]$FrameLimit = 0,
   [switch]$NoFrameInterpolation,
+  [switch]$AlwaysFrameInterpolation,
   [switch]$NoForce24Fps,
   [switch]$Force,
-  [switch]$DryRun
+  [switch]$DryRun,
+  [ValidateSet("quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug", "trace")]
+  [string]$FfmpegLogLevel = "error"
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,6 +71,15 @@ function Get-ManifestItems {
   return @($parsed)
 }
 
+function Get-VideoStreamProbe {
+  param([string]$FfprobePath, [string]$PathValue)
+  $probeJson = & $FfprobePath -v error -select_streams v:0 -show_entries stream=width,height,avg_frame_rate,r_frame_rate,codec_name,codec_tag_string,pix_fmt -of json $PathValue
+  if ($LASTEXITCODE -ne 0) { throw "ffprobe failed: $PathValue" }
+  $streams = @((($probeJson | ConvertFrom-Json).streams))
+  if ($streams.Count -eq 0) { throw "No video stream found: $PathValue" }
+  return $streams[0]
+}
+
 function Invoke-TopazProcessRedacted {
   param([string]$ExePath, [string[]]$ArgsList)
   $oldErrorActionPreference = $ErrorActionPreference
@@ -102,17 +114,6 @@ $env:TVAI_MODEL_DATA_DIR = $ModelDir
 $items = @(Get-ManifestItems $ManifestPath)
 if ($items.Count -eq 0) { throw "Manifest has no items: $ManifestPath" }
 
-$filterParts = @()
-if (-not $NoFrameInterpolation) {
-  $filterParts += "tvai_fi=model=$ApolloModel`:slowmo=1`:rdt=-0.000001`:device=$GpuDevice`:vram=$Vram`:instances=1"
-}
-$filterParts += "tvai_up=model=$RheaModel`:scale=0`:w=$Width`:h=$Height`:preblur=0`:noise=0`:details=0`:halo=0`:blur=0`:compression=0`:estimate=8`:device=$GpuDevice`:vram=$Vram`:instances=1"
-$filterParts += "scale=w=$Width`:h=$Height`:flags=lanczos`:threads=0"
-if (-not $NoForce24Fps) {
-  $filterParts += "fps=fps=24"
-}
-$filterComplex = $filterParts -join ","
-
 $index = 0
 foreach ($item in $items) {
   $index++
@@ -130,10 +131,37 @@ foreach ($item in $items) {
   if (-not (Test-Path -LiteralPath $source)) { throw "Source not found for item $index`: $source" }
   if ((Test-Path -LiteralPath $output) -and -not $Force) { throw "Output exists for item $index. Use -Force to overwrite: $output" }
 
+  $sourceProbe = Get-VideoStreamProbe $ffprobe $source
+  $sourceAvgRate = Convert-RateToDouble ([string]$sourceProbe.avg_frame_rate)
+  $sourceRealRate = Convert-RateToDouble ([string]$sourceProbe.r_frame_rate)
+  $sourceRateForDecision = if ($sourceAvgRate -ne $null) { $sourceAvgRate } else { $sourceRealRate }
+  $sourceIsExact24 = ($sourceRateForDecision -ne $null) -and ([math]::Abs($sourceRateForDecision - 24.0) -lt 0.001)
+
+  $itemNoFi = ($item.PSObject.Properties.Name -contains "noFrameInterpolation") -and ([bool]$item.noFrameInterpolation)
+  $itemHasFiPreference = $item.PSObject.Properties.Name -contains "frameInterpolation"
+  $useFrameInterpolation = (-not $NoFrameInterpolation) -and (-not $itemNoFi)
+  if ($itemHasFiPreference -and -not $NoFrameInterpolation) {
+    $useFrameInterpolation = [bool]$item.frameInterpolation
+  } elseif ($sourceIsExact24 -and -not $AlwaysFrameInterpolation) {
+    $useFrameInterpolation = $false
+  }
+
+  $filterParts = @()
+  if ($useFrameInterpolation) {
+    $filterParts += "tvai_fi=model=$ApolloModel`:slowmo=1`:rdt=-0.000001`:device=$GpuDevice`:vram=$Vram`:instances=1"
+  }
+  $filterParts += "tvai_up=model=$RheaModel`:scale=0`:w=$Width`:h=$Height`:preblur=0`:noise=0`:details=0`:halo=0`:blur=0`:compression=0`:estimate=8`:device=$GpuDevice`:vram=$Vram`:instances=1"
+  $filterParts += "scale=w=$Width`:h=$Height`:flags=lanczos`:threads=0"
+  if (-not $NoForce24Fps) {
+    $filterParts += "fps=fps=24"
+  }
+  $filterComplex = $filterParts -join ","
+  $modelsUsed = if ($useFrameInterpolation) { "$ApolloModel and $RheaModel" } else { $RheaModel }
+
   $outputDir = Split-Path -Parent $output
   if ($outputDir) { New-Item -ItemType Directory -Force -Path $outputDir | Out-Null }
 
-  $args = @("-hide_banner", "-nostdin", "-y", "-nostats")
+  $args = @("-hide_banner", "-loglevel", $FfmpegLogLevel, "-nostdin", "-y", "-nostats")
   if ($trimStart) { $args += @("-ss", $trimStart) }
   $args += @("-i", $source)
   if ($duration) { $args += @("-t", $duration) }
@@ -165,22 +193,23 @@ foreach ($item in $items) {
   $args += @(
     "-movflags", "frag_keyframe+empty_moov+delay_moov+use_metadata_tags+write_colr",
     "-bf", "0",
-    "-metadata", "videoai=Processed using $ApolloModel and $RheaModel. Changed resolution to ${Width}x${Height}"
+    "-metadata", "videoai=Processed using $modelsUsed. Changed resolution to ${Width}x${Height}"
   )
 
   if ($FrameLimit -gt 0) { $args += @("-frames:v", [string]$FrameLimit) }
   $args += $output
 
+  $sourceRateText = if ($sourceRateForDecision -ne $null) { "{0:N6}" -f $sourceRateForDecision } else { "unknown" }
+  $fiText = if ($useFrameInterpolation) { "on" } else { "off" }
   Write-Host "[$index/$($items.Count)] $source -> $output"
+  Write-Host "Source fps: $sourceRateText, frame interpolation: $fiText"
   Write-Host (Format-ArgsForLog (@($ffmpeg) + $args))
 
   if (-not $DryRun) {
     $exitCode = Invoke-TopazProcessRedacted $ffmpeg $args
     if ($exitCode -ne 0) { throw "Topaz ffmpeg failed for item $index with exit code $exitCode." }
 
-    $probeJson = & $ffprobe -v error -select_streams v:0 -show_entries stream=width,height,avg_frame_rate,r_frame_rate,codec_name,codec_tag_string,pix_fmt -of json $output
-    if ($LASTEXITCODE -ne 0) { throw "ffprobe failed for output: $output" }
-    $probe = ($probeJson | ConvertFrom-Json).streams[0]
+    $probe = Get-VideoStreamProbe $ffprobe $output
     $avg = Convert-RateToDouble ([string]$probe.avg_frame_rate)
     $real = Convert-RateToDouble ([string]$probe.r_frame_rate)
     $rateOk = (($avg -ne $null) -and ([math]::Abs($avg - 24.0) -lt 0.001)) -or (($real -ne $null) -and ([math]::Abs($real - 24.0) -lt 0.001))
