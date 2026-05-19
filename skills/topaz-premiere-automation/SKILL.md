@@ -12,7 +12,7 @@ description: Automate company AI clip workflows that combine Adobe Premiere Pro 
 - Work on a copied `.prproj` or create a timestamped backup before editing project files or moving media.
 - Treat text layers, captions, graphics, icons, adjustment items, and still images as non-video unless the user explicitly asks to process them.
 - Output company upscales as `3840x2160`, exact `24fps`, `.mov`, ProRes 4444 flags, Rhea upscale, audio copy, duplicate-frame replacement off. Use Apollo frame interpolation only when the source is not already exact 24fps, unless the user explicitly requests FI anyway.
-- Verify every output with `ffprobe`; if a file reports `23.976`, `24.12`, `30`, or anything other than 24fps, normalize/re-render it to exact CFR 24 before relinking.
+- Verify every output with `ffprobe`; if a file reports `23.976`, `24.12`, `30`, or anything other than 24fps, normalize/re-render it to exact CFR 24 before relinking. If the source is already exact 24fps, do not add an `fps` filter or `-r 24`, because that can add a duplicate frame on odd frame-count clips; use `setpts=N/(24*TB)` to keep frame count while writing clean 24fps timestamps.
 
 ## Quick Start
 
@@ -77,7 +77,7 @@ For `.prproj` work:
 - Rename/materialize clips by timeline order using the company naming rule.
 - For exact trims, use frame counts at 24fps; Premiere ticks are commonly `254016000000` per second, so one 24fps frame is `10584000000` ticks.
 - Relink the project to the new/upscaled file paths and update sequence settings to 3840x2160 square-pixel 24fps where those fields are present.
-- Create a 2025 handoff XML when the `.prproj` itself is from a newer Premiere version. Do not promise true `.prproj` downgrades unless Premiere itself exports one.
+- Create a 2025 handoff XML only when the user asks for it or when the editor must open the work in Premiere Pro 2025 while the `.prproj` was saved by a newer Premiere version. If the user's Premiere is already 2025, XML export is optional. Do not promise true `.prproj` downgrades unless Premiere itself exports one.
 
 ## Resources
 
@@ -85,6 +85,7 @@ For `.prproj` work:
 - `scripts/New-TopazBatchManifest.ps1`: create ordered company-named manifests from a folder.
 - `scripts/Invoke-TopazVideoBatch.ps1`: run Topaz Video CLI batch upscales and verify 4K/24fps.
 - `scripts/Update-PremiereLinksFromManifest.ps1`: back up a `.prproj` and relink source paths to manifest outputs.
+- `scripts/Update-FcpXmlFromManifest.ps1`: relink a Premiere/FCP XML handoff to manifest outputs and set sequence width/height.
 - `scripts/Install-ProRes4444Encoder.ps1`: optional UI encoder patch for Topaz's `video-encoders.json`.
 - `assets/prores-4444-encoder-entry.json`: ProRes 4444 encoder entry if the UI preset disappears.
 - `assets/topaz-rhea4k-apollo24-prores4444.preset.json`: portable record of the company preset.

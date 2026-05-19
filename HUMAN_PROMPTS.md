@@ -12,7 +12,7 @@ Keep each clip's pre-upscale nickname/file name unless I give a new naming rule.
 Back up originals into a timestamped backup folder.
 Relink the Premiere project to the upscaled files.
 Set the sequence to 4K and make the clips fill the frame without letterbox/pillarbox gaps where appropriate.
-Create a 2025-compatible XML handoff.
+Create a 2025-compatible XML handoff if the editor needs Premiere Pro 2025 compatibility.
 Do not access X drive.
 ```
 
@@ -24,7 +24,7 @@ For this Premiere project: C:\path\project.prproj
 Rename timeline video clips in order as S48B_SAK_C0010_v001, S48B_SAK_C0020_v001, and so on.
 Materialize each clip at the exact timeline length with no frame drift.
 Upscale to 4K 24fps ProRes 4444 MOV using the company preset.
-Back up originals, relink the project to the upscaled files, and create a 2025 XML handoff.
+Back up originals, relink the project to the upscaled files, and create a 2025 XML handoff only if needed.
 Ignore captions, text, icons, still images, and Essential Graphics.
 Do not access X drive.
 ```

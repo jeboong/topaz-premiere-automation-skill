@@ -54,3 +54,5 @@ After output verification:
 ## 2025 Compatibility
 
 Do not promise a true Premiere project downgrade by editing version numbers. For Premiere 2025 handoff, create an `xml` folder beside the project and write/export a Final Cut Pro XML-style handoff that links the verified media. If Premiere is available and can export an official XML, prefer that.
+
+Only make the XML when it is useful: the user asks for it, the editor uses Premiere Pro 2025, or the `.prproj` was saved from a newer Premiere version and must be opened in 2025. If the current project is already for 2025 and the user does not need an interchange file, skip XML.

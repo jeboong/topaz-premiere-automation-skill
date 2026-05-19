@@ -152,8 +152,12 @@ foreach ($item in $items) {
   }
   $filterParts += "tvai_up=model=$RheaModel`:scale=0`:w=$Width`:h=$Height`:preblur=0`:noise=0`:details=0`:halo=0`:blur=0`:compression=0`:estimate=8`:device=$GpuDevice`:vram=$Vram`:instances=1"
   $filterParts += "scale=w=$Width`:h=$Height`:flags=lanczos`:threads=0"
-  if (-not $NoForce24Fps) {
+  $force24ForItem = (-not $NoForce24Fps) -and (-not $sourceIsExact24)
+  if ($force24ForItem) {
     $filterParts += "fps=fps=24"
+  }
+  if (-not $NoForce24Fps) {
+    $filterParts += "setpts=N/(24*TB)"
   }
   $filterComplex = $filterParts -join ","
   $modelsUsed = if ($useFrameInterpolation) { "$ApolloModel and $RheaModel" } else { $RheaModel }
@@ -184,7 +188,7 @@ foreach ($item in $items) {
 
   $args += @("-map_metadata", "0", "-map_metadata:s:v", "0:s:v")
 
-  if (-not $NoForce24Fps) {
+  if ($force24ForItem) {
     $args += @("-r:v", "24", "-fps_mode:v", "cfr")
   } else {
     $args += @("-fps_mode:v", "passthrough")
@@ -201,8 +205,9 @@ foreach ($item in $items) {
 
   $sourceRateText = if ($sourceRateForDecision -ne $null) { "{0:N6}" -f $sourceRateForDecision } else { "unknown" }
   $fiText = if ($useFrameInterpolation) { "on" } else { "off" }
+  $fpsModeText = if ($force24ForItem) { "force cfr 24" } else { "24fps timestamps" }
   Write-Host "[$index/$($items.Count)] $source -> $output"
-  Write-Host "Source fps: $sourceRateText, frame interpolation: $fiText"
+  Write-Host "Source fps: $sourceRateText, frame interpolation: $fiText, fps mode: $fpsModeText"
   Write-Host (Format-ArgsForLog (@($ffmpeg) + $args))
 
   if (-not $DryRun) {
