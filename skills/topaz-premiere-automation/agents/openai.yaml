@@ -1,0 +1,4 @@
+interface:
+  display_name: "Topaz Premiere Automation"
+  short_description: "Batch Topaz upscales for Premiere clips"
+  default_prompt: "Batch upscale Premiere timeline clips with Topaz Video, company naming, exact 24fps ProRes 4444 outputs, backups, relinking, and 2025 XML handoff."

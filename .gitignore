@@ -1,0 +1,13 @@
+topaz_cli_test/
+topaz_codex_presets/
+*.mov
+*.mp4
+*.mxf
+*.avi
+*.prproj
+*.bak
+*.backup
+*.log
+work/
+output/
+tmp/

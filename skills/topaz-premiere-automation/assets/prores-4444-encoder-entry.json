@@ -1,0 +1,21 @@
+{
+  "id": "prores-422-4444-win",
+  "encoder": "ProRes",
+  "profile": "4444",
+  "allowsAlpha": 1,
+  "ffmpegOpts": "-c:v prores_ks -profile:v 4 -vendor apl0 -tag:v ap4h -pix_fmt yuv444p10le -metadata:s:v:0 encoder=AppleProRes4444",
+  "ext": [
+    "mov"
+  ],
+  "os": "windows|linux",
+  "minSize": [
+    1,
+    1
+  ],
+  "maxSize": [
+    16386,
+    16386
+  ],
+  "maxBitDepth": 12,
+  "doNotScaleFullColorRange": "transcode"
+}
